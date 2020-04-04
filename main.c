@@ -699,7 +699,7 @@ void VoirPanier(liste *liste_initiale)
             }
         }
     } else {
-        printf("\nCe panier est vide, RIEN a Afficher !!!!");
+        printf("\nCe panier est vide, RIEN a Afficher !");
     }
 
 }
