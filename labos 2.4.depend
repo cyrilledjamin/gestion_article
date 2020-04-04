@@ -1,0 +1,19 @@
+# depslib dependency file v1.0
+1584805012 source:c:\users\cyril\onedrive\bureau\info niveau1\labos programmation\labos 2.4\main.c
+	<stdio.h>
+	<stdlib.h>
+	<conio.h>
+	<time.h>
+	<ctype.h>
+	<io.h>
+	<string.h>
+
+1586038739 source:c:\users\cyril\onedrive\bureau\info niveau1\labos programmation\labos2.4\main.c
+	<stdio.h>
+	<stdlib.h>
+	<conio.h>
+	<time.h>
+	<ctype.h>
+	<io.h>
+	<string.h>
+
