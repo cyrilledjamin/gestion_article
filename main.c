@@ -7,6 +7,7 @@
 #include <string.h>
 #define TVA 0.21
 #define FICHIER_STOCK "C:Djamin.dat"
+#define Bon_commande "C:Djamin.txt"
 
 
 // définition des structures
@@ -62,9 +63,9 @@ void VoirArticle(article ARTICLE);
 
 void AjouterArticlePanier(char fichier[], liste *liste_initiale);
 void VoirPanier (liste *liste_initiale);
-void SupprimerArticlePanier(char fichier[], liste** ptr_debut);
-void EcrireBonDeCommande(char fichier[], liste *ptr);
-void ViderPanier();
+void SupprimerArticlePanier(char fichier[], liste *liste_initiale);
+void EcrireBonDeCommande(char fichier[], liste *liste_initiale);
+void ViderPanier(liste *liste_initiale);
 
 //debut du programme
 int main()
@@ -85,7 +86,7 @@ int main()
   element_liste->suite = NULL;
   initial_liste->premier = element_liste;
 
-  char choixMenu, choix_panier; int choix,i;
+  char choixMenu, choix_panier; int choix,i,choix_liste;
   article larticle;
   article *ptr;
   article** tri;
@@ -200,6 +201,26 @@ int main()
 
                         case 3:
                                 VoirPanier(initial_liste);
+                                do{
+                                    printf("\n\n-------------------------------------------\n");
+                                    printf("\n1. Ajouter un article \n"
+                                            "2. Supprimer un article \n"
+                                            "3. Valider le panier \n"
+                                            "4. Continuer les achats \n\n"
+                                            "Votre choix:  ");
+                                    fflush(stdin);  scanf("%d",&choix_liste);
+                                    switch(choix_liste)
+                                    {
+                                        case 1: AjouterArticlePanier(FICHIER_STOCK, initial_liste);
+                                                break;
+                                        case 2: SupprimerArticlePanier(FICHIER_STOCK, initial_liste);
+                                                break;
+                                        case 3: EcrireBonDeCommande(Bon_commande, initial_liste);
+                                                ViderPanier(initial_liste);
+                                                break;
+
+                                    }
+                                }while(choix_liste!=4);
                                 break;
 
                 }
@@ -507,7 +528,6 @@ void AjouterArticlePanier(char fichier[], liste* liste_initiale)
     long position=-1;
     char taille;
     position=RechercherArticle(&ptr, fic);fflush(stdin);
-
     printf("\n Entrer la taille de l'article: ");
     scanf("%c",&taille);fflush(stdin);
     if (position >- 1)
@@ -672,11 +692,283 @@ void AjouterArticlePanier(char fichier[], liste* liste_initiale)
 void VoirPanier(liste *liste_initiale)
 {
     printf("Votre panier\n-------------\n");
-    printf("Reference                      Designation                  Taille          Quantite          Prix\n");
-
     element *element_courant = liste_initiale->premier;
-
+    float prix, total = 0.0;
     if(element_courant->information.Reference != -10) {
+
+        printf("Reference                      Designation                  Taille          Quantite          Prix\n");
+        while(1 == 1) {
+
+            char taille = 'Z';
+            int qte = 0;
+
+            if(element_courant->information.Stock.TailleS > 0 ) {;
+                taille = 'S'; qte = element_courant->information.Stock.TailleS;
+            } else if(element_courant->information.Stock.TailleM > 0 ) {
+                taille = 'M'; qte = element_courant->information.Stock.TailleM;
+            } else if(element_courant->information.Stock.TailleL > 0 ) {
+                taille = 'L'; qte = element_courant->information.Stock.TailleL;
+            }
+            prix = ((((element_courant->information.PrixHT)*TVA)+(element_courant->information.PrixHT))*qte);
+            total += prix;
+            printf("%0d %34s %21c %15d %22.2f\n", element_courant->information.Reference, element_courant->information.Designation, taille, qte, prix);
+
+
+            if(element_courant->suite == NULL){
+                break;
+            } else {
+                element_courant = element_courant->suite;
+            }
+        }
+
+         printf("\n\nTOTAL: %.2f", total);
+
+    } else {
+        printf("\nCe panier est vide, RIEN a Afficher !");
+    }
+}
+
+void SupprimerArticlePanier(char fichier[], liste *liste_initiale)
+{
+    FILE *fic;
+    fic = fopen(FICHIER_STOCK, "r+b");
+    article ptr;
+    long position = -1;
+    char taille;
+    position = RechercherArticle(&ptr, fic);
+    fflush(stdin);
+    printf("\n Entrer la taille de l'article: ");
+    scanf("%c", &taille);
+    fflush(stdin);
+
+    if (position > -1)
+    {
+        fseek(fic, position, 0);
+        fread(&ptr, sizeof(article), 1, fic);
+        element *cur_element, *precedent;
+
+        switch (taille)
+        {
+        case 'L':
+            ptr.Stock.TailleL += 1;
+            fseek(fic, position, 0);
+            fwrite(&ptr, sizeof(article), 1, fic);
+            fclose(fic);
+
+            cur_element = liste_initiale->premier;
+            precedent = NULL;
+
+            if(cur_element->suite == NULL)
+            {
+                if(cur_element->information.Stock.TailleL > 1) {
+                    cur_element->information.Stock.TailleL -= 1;
+                } else {
+                    element *asupprimer = liste_initiale->premier;
+                    free(asupprimer);
+
+                    element *element_liste = malloc(sizeof(element));
+                    article dummy_article;
+                    dummy_article.Reference = -10;
+                    element_liste->information = dummy_article;
+                    element_liste->suite = NULL;
+                    liste_initiale->premier = element_liste;
+                }
+                break;
+            }
+            else {
+                while (1 == 1)
+                {
+                    if(ptr.Reference == cur_element->information.Reference) {
+                        if(cur_element->information.Stock.TailleL > 1) {
+                            cur_element->information.Stock.TailleL -= 1;
+                            break;
+                        } else {
+                            if(precedent != NULL) {
+                                precedent->suite = cur_element->suite;
+                            } else {
+                                liste_initiale->premier = cur_element->suite;
+                            }
+
+                            free(cur_element);
+                            break;
+                        }
+                    }
+
+                    if (cur_element->suite != NULL)
+                    {
+                        precedent = cur_element;
+                        cur_element = cur_element->suite;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            break;
+
+        case 'M':
+            ptr.Stock.TailleM += 1;
+            fseek(fic, position, 0);
+            fwrite(&ptr, sizeof(article), 1, fic);
+            fclose(fic);
+
+            cur_element = liste_initiale->premier;
+            precedent = NULL;
+
+            if(cur_element->suite == NULL)
+            {
+                if(cur_element->information.Stock.TailleM > 1) {
+                    cur_element->information.Stock.TailleM -= 1;
+                } else {
+                    element *asupprimer = liste_initiale->premier;
+                    free(asupprimer);
+
+                    element *element_liste = malloc(sizeof(element));
+                    article dummy_article;
+                    dummy_article.Reference = -10;
+                    element_liste->information = dummy_article;
+                    element_liste->suite = NULL;
+                    liste_initiale->premier = element_liste;
+                }
+                break;
+            }
+            else {
+                while (1 == 1)
+                {
+                    if(ptr.Reference == cur_element->information.Reference) {
+                        if(cur_element->information.Stock.TailleM > 1) {
+                            cur_element->information.Stock.TailleM -= 1;
+                            break;
+                        } else {
+                            if(precedent != NULL) {
+                                precedent->suite = cur_element->suite;
+                            } else {
+                                liste_initiale->premier = cur_element->suite;
+                            }
+
+                            free(cur_element);
+                            break;
+                        }
+                    }
+
+                    if (cur_element->suite != NULL)
+                    {
+                        precedent = cur_element;
+                        cur_element = cur_element->suite;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            break;
+        case 'S':
+            ptr.Stock.TailleS += 1;
+            fseek(fic, position, 0);
+            fwrite(&ptr, sizeof(article), 1, fic);
+            fclose(fic);
+
+            cur_element = liste_initiale->premier;
+            precedent = NULL;
+
+            if(cur_element->suite == NULL)
+            {
+                if(cur_element->information.Stock.TailleS > 1) {
+                    cur_element->information.Stock.TailleS -= 1;
+                } else {
+                    element *asupprimer = liste_initiale->premier;
+                    free(asupprimer);
+
+                    element *element_liste = malloc(sizeof(element));
+                    article dummy_article;
+                    dummy_article.Reference = -10;
+                    element_liste->information = dummy_article;
+                    element_liste->suite = NULL;
+                    liste_initiale->premier = element_liste;
+                }
+                break;
+            }
+            else {
+                while (1 == 1)
+                {
+                    if(ptr.Reference == cur_element->information.Reference) {
+                        if(cur_element->information.Stock.TailleS > 1) {
+                            cur_element->information.Stock.TailleS -= 1;
+                            break;
+                        } else {
+                            if(precedent != NULL) {
+                                precedent->suite = cur_element->suite;
+                            } else {
+                                liste_initiale->premier = cur_element->suite;
+                            }
+
+                            free(cur_element);
+                            break;
+                        }
+                    }
+
+                    if (cur_element->suite != NULL)
+                    {
+                        precedent = cur_element;
+                        cur_element = cur_element->suite;
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            break;
+        }
+    }
+}
+
+
+void EcrireBonDeCommande(char fichier[], liste *liste_initiale)
+{
+    FILE *fic;
+    element *element_courant = liste_initiale->premier;
+    char Nom[50], add[200];
+    int day,mois,an, day_livraison , mois_livraison, an_livraison;
+    time_t tsec = time(NULL);
+    time_t deliver_date = tsec + (3600 * 24 * 7);
+
+    // Date actuelle
+    struct tm t;
+    t=*localtime(&tsec);
+    day = t.tm_mday;
+    mois = t.tm_mon + 1;
+    an = t.tm_year + 1900;
+
+    //date de livraison
+    struct tm t1;
+    t1=*localtime(&deliver_date);
+    day_livraison = t1.tm_mday;
+    mois_livraison = t1.tm_mon + 1;
+    an_livraison = t1.tm_year + 1900;
+
+
+    fic=fopen("Djamin.txt","w");
+    if(fic==NULL)
+    {
+        printf(" Erreur de lecture\n");
+    }
+    else
+    {
+        fflush(stdin);
+        printf("\nEntrez votre nom: ");
+        gets(Nom);
+        fflush(stdin);
+        printf("\nEntrez votre adresse: ");
+        gets(add);
+        fprintf(fic,"\n\nCommande de %s du %02d/%02d/%4d \n", Nom, day, mois, an);
+        fprintf(fic,"Adresse de livraison : %s \n\n\n", add);
+        fprintf(fic,"Reference                      Designation                  Taille          Quantite          Prix\n");
         while(1 == 1) {
 
             char taille = 'Z';
@@ -690,7 +982,7 @@ void VoirPanier(liste *liste_initiale)
                 taille = 'L'; qte = element_courant->information.Stock.TailleL;
             }
 
-            printf("%0d %34s %21c %15d %22.2f\n", element_courant->information.Reference, element_courant->information.Designation, taille, qte, ((((element_courant->information.PrixHT)*TVA)+(element_courant->information.PrixHT))*qte));
+            fprintf(fic,"%0d %34s %21c %15d %22.2f\n", element_courant->information.Reference, element_courant->information.Designation, taille, qte, ((((element_courant->information.PrixHT)*TVA)+(element_courant->information.PrixHT))*qte));
 
             if(element_courant->suite == NULL){
                 break;
@@ -698,76 +990,31 @@ void VoirPanier(liste *liste_initiale)
                 element_courant = element_courant->suite;
             }
         }
-    } else {
-        printf("\nCe panier est vide, RIEN a Afficher !");
+        fprintf(fic,"\n\nLivraison prevue le : %02d/%02d/%4d", day_livraison , mois_livraison, an_livraison);
+        fclose(fic);
     }
 
 }
 
-    /*
-    void AjouterArticlePanier(char fichier[], liste* ptr_debut)
-    {
-         int trouve=0;
-        liste *inserer, *parcours, *precedent;
-        parcours= ptr_debut;
-        precedent=NULL;
-        inserer= (liste*)malloc(sizeof(liste));
-    //    EncoderInfo(&(inserer->information));
-        while (parcours!=NULL && !trouve)
-        {
-            if(inserer->information.Reference == parcours->information.Reference)
-                trouve++;
-            else
-            {
-                precedent=parcours;
-                parcours=parcours->suite;
-            }
-        }
-
-    inserer->suite = parcours;
-    if(precedent==NULL)
-        *ptr_debut=*inserer;
-    else
-        precedent->suite=inserer;
-    return;
-}
-
-void VoirPanier (liste lis)
+void ViderPanier(liste *liste_initiale)
 {
-
-}
-
-void SupprimerArticlePanier(char fichier[], liste** ptr_debut)
-{
-    int trouve=0;
-    int supprimer;
-    liste *parcours, *precedent;
-    parcours= *ptr_debut;
-    precedent=NULL;
-    printf("Reference: ");
-    fflush(stdin); scanf("%d", &supprimer);
-    while (parcours!=NULL && !trouve)
+    while(1 == 1)
     {
-        if(supprimer == parcours->information.Reference)
-            parcours=NULL;
-        else
-        {
-            precedent=parcours;
-            parcours=parcours->suite;
+        element *element_courant = liste_initiale->premier;
+
+        if(element_courant->suite == NULL){
+            free(element_courant);
+            element *element_liste = malloc(sizeof(element));
+            article dummy_article;
+            dummy_article.Reference = -10;
+            element_liste->information = dummy_article;
+            element_liste->suite = NULL;
+            liste_initiale->premier = element_liste;
+            break;
+        } else{
+            liste_initiale->premier = element_courant->suite;
+            free(element_courant);
         }
     }
-    if(trouve)
-    {
-        if(precedent==NULL)
-            *ptr_debut=parcours->suite;
-        else
-            precedent->suite=parcours->suite;
-        free(parcours);
-    }
-    return;
+
 }
-
-void EcrireBonDeCommande(char fichier[], liste *ptr)
-{
-
-}*/
